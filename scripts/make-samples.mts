@@ -1,0 +1,34 @@
+// Renders the bundled sample invoices (fictional) to small PNGs. Needs Playwright: `npm i -D playwright` or a global install.
+import { createRequire } from "node:module";
+import { SAMPLE_INVOICES } from "../src/core/samples";
+
+const require = createRequire(import.meta.url);
+const { chromium } = require(process.env.PLAYWRIGHT_PATH ?? "playwright");
+
+const ACCENTS: Record<string, string> = { paper: "#2f6f5e", cloud: "#4b4fd1", catering: "#c2562b" };
+const addr: Record<string, string> = { paper: "18 Alder Row, Springfield", cloud: "400 Cascade Ave, Portland", catering: "7 Orchard Lane, Fairview" };
+const money = (n: number) => n.toFixed(2);
+
+const html = (s: (typeof SAMPLE_INVOICES)[number]) => {
+  const c = ACCENTS[s.id] ?? "#333";
+  const rows = s.invoice.items.map((i) => `<tr><td>${i.description}</td><td class=r>${i.qty}</td><td class=r>${money(i.unit)}</td><td class=r>${money(i.qty * i.unit)}</td></tr>`).join("");
+  return `<body style="margin:0;font:14px system-ui,sans-serif;color:#1c1f26;background:#fff;width:480px;height:640px;box-sizing:border-box;padding:34px">
+  <style>table{width:100%;border-collapse:collapse;margin-top:26px}th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;border-bottom:2px solid ${c};padding:6px 0}td{padding:9px 0;border-bottom:1px solid #e5e7eb}.r{text-align:right}th.r{text-align:right}</style>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div style="font-size:22px;font-weight:700;color:${c}">${s.invoice.vendor}</div><div style="color:#6b7280;margin-top:4px">${addr[s.id]}</div></div>
+    <div style="text-align:right"><div style="font-size:12px;letter-spacing:.12em;color:#6b7280">INVOICE</div><div style="font-size:18px;font-weight:700">${s.invoice.invoiceNo}</div></div>
+  </div>
+  <div style="margin-top:28px;display:flex;justify-content:space-between"><div><div style="color:#6b7280;font-size:12px">BILL TO</div>Demo Company Ltd.</div><div style="text-align:right"><div style="color:#6b7280;font-size:12px">DATE</div>${s.invoice.date}</div></div>
+  <table><tr><th>Description</th><th class=r>Qty</th><th class=r>Unit</th><th class=r>Amount</th></tr>${rows}</table>
+  <div style="margin-top:22px;display:flex;justify-content:flex-end"><div style="background:${c};color:#fff;border-radius:8px;padding:12px 18px;font-size:18px;font-weight:700">Total ${s.invoice.currency} ${money(s.invoice.total)}</div></div>
+  <div style="position:absolute;bottom:30px;left:34px;color:#9ca3af;font-size:11px">Sample document with fictional data. Payment terms: 30 days.</div></body>`;
+};
+
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 480, height: 640 } });
+for (const s of SAMPLE_INVOICES) {
+  await page.setContent(html(s));
+  await page.screenshot({ path: `assets/samples/${s.id}.png` });
+}
+await browser.close();
+console.log("samples written");
