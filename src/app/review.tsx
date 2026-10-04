@@ -8,9 +8,12 @@ import { useApp } from "../state";
 import { Backdrop } from "../ui/Backdrop";
 import { Press } from "../ui/Press";
 import { SwipeToApprove } from "../ui/SwipeToApprove";
-import { CATEGORY_COLORS, colors, radius, space, type, usd } from "../theme";
+import { radius, space, usd } from "../theme";
+import { makeThemed, useTheme } from "../themeContext";
 
 export default function Review() {
+  const { colors, type, cat } = useTheme();
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { job, setJob, approve, reject } = useApp();
   const [done, setDone] = useState(false);
@@ -56,8 +59,8 @@ export default function Review() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.vendor} numberOfLines={2}>{p.invoice.vendor}</Text>
                   <Text style={type.small}>{p.invoice.invoiceNo} · {p.invoice.date}</Text>
-                  <View style={[styles.chip, { backgroundColor: (CATEGORY_COLORS[p.category] ?? colors.accent) + "26" }]}>
-                    <Text style={{ color: CATEGORY_COLORS[p.category] ?? colors.accent, fontWeight: "700", fontSize: 12.5 }}>{p.category}</Text>
+                  <View style={[styles.chip, { backgroundColor: (cat[p.category] ?? colors.accent) + "26" }]}>
+                    <Text style={{ color: cat[p.category] ?? colors.accent, fontWeight: "700", fontSize: 12.5 }}>{p.category}</Text>
                   </View>
                 </View>
               </View>
@@ -101,7 +104,7 @@ export default function Review() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeThemed((colors, type, cat) => StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   back: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" },
   card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: space.lg, borderWidth: 1, borderColor: colors.line },
@@ -117,4 +120,4 @@ const styles = StyleSheet.create({
   ghostText: { color: colors.text, fontWeight: "700" },
   checkWrap: { width: 96, height: 96, borderRadius: 48, backgroundColor: "rgba(74,222,128,0.16)", borderWidth: 2, borderColor: colors.ok, alignItems: "center", justifyContent: "center" },
   check: { color: colors.ok, fontSize: 48, fontWeight: "800" },
-});
+}));

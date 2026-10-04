@@ -9,22 +9,25 @@ import { useApp } from "../state";
 import { Backdrop } from "../ui/Backdrop";
 import { CountUp } from "../ui/CountUp";
 import { Press } from "../ui/Press";
-import { CATEGORY_COLORS, colors, radius, space, type, usd } from "../theme";
+import { radius, space, usd } from "../theme";
+import { makeThemed, useTheme } from "../themeContext";
 
 function CategoryBar({ totals }: { totals: [string, number][] }) {
+  const { colors, type, cat } = useTheme();
+  const styles = useStyles();
   const sum = totals.reduce((a, [, v]) => a + v, 0) || 1;
   return (
     <View>
       <View style={styles.bar}>
-        {totals.map(([cat, v], i) => (
-          <Animated.View key={cat} entering={FadeInDown.delay(200 + i * 80).springify()} style={{ flex: v / sum, backgroundColor: CATEGORY_COLORS[cat] ?? colors.accent, marginRight: i < totals.length - 1 ? 3 : 0 }} />
+        {totals.map(([name, v], i) => (
+          <Animated.View key={name} entering={FadeInDown.delay(200 + i * 80).springify()} style={{ flex: v / sum, backgroundColor: cat[name] ?? colors.accent, marginRight: i < totals.length - 1 ? 3 : 0 }} />
         ))}
       </View>
       <View style={styles.legend}>
-        {totals.map(([cat, v]) => (
-          <View key={cat} style={styles.legendItem}>
-            <View style={[styles.dot, { backgroundColor: CATEGORY_COLORS[cat] ?? colors.accent }]} />
-            <Text style={type.small}>{cat} · {Math.round((v / sum) * 100)}%</Text>
+        {totals.map(([name, v]) => (
+          <View key={name} style={styles.legendItem}>
+            <View style={[styles.dot, { backgroundColor: cat[name] ?? colors.accent }]} />
+            <Text style={type.small}>{name} · {Math.round((v / sum) * 100)}%</Text>
           </View>
         ))}
       </View>
@@ -33,6 +36,8 @@ function CategoryBar({ totals }: { totals: [string, number][] }) {
 }
 
 function ScanButton() {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const pulse = useSharedValue(0);
   useEffect(() => {
     pulse.value = withRepeat(withDelay(300, withTiming(1, { duration: 1800, easing: Easing.out(Easing.quad) })), -1, false);
@@ -52,7 +57,10 @@ function ScanButton() {
 }
 
 export default function Home() {
+  const { colors, type, cat } = useTheme();
+  const styles = useStyles();
   const { expenses, useReal, model, apiKey } = useApp();
+  const { mode, toggle } = useTheme();
   const insets = useSafeAreaInsets();
   const total = expenses.reduce((a, e) => a + e.total, 0);
   const byCat = Object.entries(expenses.reduce<Record<string, number>>((m, e) => ({ ...m, [e.category]: (m[e.category] ?? 0) + e.total }), {})).sort((a, b) => b[1] - a[1]);
@@ -63,10 +71,15 @@ export default function Home() {
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + 120, paddingHorizontal: space.xl }} showsVerticalScrollIndicator={false}>
         <View style={styles.top}>
           <Text style={type.label}>Invoice Agent</Text>
-          <Press onPress={() => router.push("/settings")} style={styles.mode} accessibilityRole="button" accessibilityLabel="Open settings">
-            <View style={[styles.dot, { backgroundColor: useReal && apiKey ? colors.ok : colors.warn }]} />
-            <Text style={styles.modeText}>{useReal && apiKey ? `Real model · ${modelLabel}` : "Scripted demo"}</Text>
-          </Press>
+          <View style={styles.topRight}>
+            <Press onPress={toggle} style={styles.themeBtn} accessibilityRole="button" accessibilityLabel={mode === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
+              <Text style={styles.themeIcon}>{mode === "dark" ? "☀" : "☾"}</Text>
+            </Press>
+            <Press onPress={() => router.push("/settings")} style={styles.mode} accessibilityRole="button" accessibilityLabel="Open settings">
+              <View style={[styles.dot, { backgroundColor: useReal && apiKey ? colors.ok : colors.warn }]} />
+              <Text style={styles.modeText}>{useReal && apiKey ? `Real model · ${modelLabel}` : "Scripted demo"}</Text>
+            </Press>
+          </View>
         </View>
 
         <Animated.View entering={FadeInDown.springify()}>
@@ -82,8 +95,8 @@ export default function Home() {
         <Text style={[type.h2, { marginTop: space.xxl, marginBottom: space.md }]}>Recent expenses</Text>
         {expenses.map((e, i) => (
           <Animated.View key={e.id} entering={FadeInDown.delay(120 + i * 60).springify().damping(16)} style={styles.row}>
-            <View style={[styles.badge, { backgroundColor: (CATEGORY_COLORS[e.category] ?? colors.accent) + "26" }]}>
-              <Text style={[styles.badgeText, { color: CATEGORY_COLORS[e.category] ?? colors.accent }]}>{e.vendor.slice(0, 1)}</Text>
+            <View style={[styles.badge, { backgroundColor: (cat[e.category] ?? colors.accent) + "26" }]}>
+              <Text style={[styles.badgeText, { color: cat[e.category] ?? colors.accent }]}>{e.vendor.slice(0, 1)}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={type.body} numberOfLines={1}>{e.vendor}</Text>
@@ -101,7 +114,10 @@ export default function Home() {
 }
 
 
-const styles = StyleSheet.create({
+const useStyles = makeThemed((colors, type, cat) => StyleSheet.create({
+  topRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  themeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" },
+  themeIcon: { color: colors.text, fontSize: 16 },
   top: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   mode: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, paddingVertical: 7, paddingHorizontal: 12, borderRadius: radius.pill },
   modeText: { color: colors.text, fontSize: 12.5, fontWeight: "600" },
@@ -117,6 +133,6 @@ const styles = StyleSheet.create({
   fab: { position: "absolute", left: space.xl, right: space.xl },
   ring: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: radius.pill, borderWidth: 2, borderColor: colors.accent },
   scanBtn: { height: 58, borderRadius: radius.pill, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
-  scanIcon: { fontSize: 24, color: "#04201c", fontWeight: "800" },
-  scanText: { fontSize: 17, fontWeight: "800", color: "#04201c" },
-});
+  scanIcon: { fontSize: 24, color: colors.onAccent, fontWeight: "800" },
+  scanText: { fontSize: 17, fontWeight: "800", color: colors.onAccent },
+}));

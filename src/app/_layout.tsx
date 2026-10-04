@@ -1,11 +1,26 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Platform } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppProvider } from "../state";
-import { colors } from "../theme";
+import { ThemeProvider, useTheme } from "../themeContext";
+
+function Shell({ children }: { children: ReactNode }) {
+  const { colors, mode } = useTheme();
+  return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
+      <StatusBar style={mode === "dark" ? "light" : "dark"} />
+      {children}
+    </GestureHandlerRootView>
+  );
+}
+
+function Screens() {
+  const { colors } = useTheme();
+  return <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.bg } }} />;
+}
 
 export default function RootLayout() {
   useEffect(() => {
@@ -13,13 +28,14 @@ export default function RootLayout() {
     if (Platform.OS === "web") document.documentElement.setAttribute("translate", "no");
   }, []);
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <SafeAreaProvider>
-        <AppProvider>
-          <StatusBar style="light" />
-          <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.bg } }} />
-        </AppProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <Shell>
+          <AppProvider>
+            <Screens />
+          </AppProvider>
+        </Shell>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

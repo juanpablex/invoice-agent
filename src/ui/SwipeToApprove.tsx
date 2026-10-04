@@ -5,13 +5,16 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import * as Haptics from "expo-haptics";
-import { colors, radius } from "../theme";
+import { radius } from "../theme";
+import { makeThemed, useTheme } from "../themeContext";
 
 const HANDLE = 56;
 const PAD = 4;
 
 /** Swipe the handle all the way to approve. Releasing early springs back. */
 export function SwipeToApprove({ label, onApproved, disabled }: { label: string; onApproved: () => void; disabled?: boolean }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const [width, setWidth] = useState(0);
   const x = useSharedValue(0);
   const max = Math.max(width - HANDLE - PAD * 2, 1);
@@ -56,11 +59,11 @@ export function SwipeToApprove({ label, onApproved, disabled }: { label: string;
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeThemed((colors, type, cat) => StyleSheet.create({
   track: { height: HANDLE + PAD * 2, borderRadius: radius.pill, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, padding: PAD, justifyContent: "center", overflow: "hidden" },
   fill: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: radius.pill, overflow: "hidden" },
   label: { position: "absolute", alignSelf: "center", color: colors.textDim, fontSize: 15, fontWeight: "600", letterSpacing: 0.3 },
   handle: { width: HANDLE, height: HANDLE, borderRadius: HANDLE / 2, overflow: "hidden" },
   handleInner: { flex: 1, alignItems: "center", justifyContent: "center" },
-  arrow: { color: "#04201c", fontSize: 24, fontWeight: "800" },
-});
+  arrow: { color: colors.onAccent, fontSize: 24, fontWeight: "800" },
+}));

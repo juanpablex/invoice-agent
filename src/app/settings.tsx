@@ -9,10 +9,13 @@ import { goBack } from "../nav";
 import { useApp } from "../state";
 import { Backdrop } from "../ui/Backdrop";
 import { Press } from "../ui/Press";
-import { colors, radius, space, type } from "../theme";
+import { radius, space } from "../theme";
+import { makeThemed, useTheme } from "../themeContext";
 import { Platform } from "react-native";
 
 export default function Settings() {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const app = useApp();
   const [key, setKey] = useState(app.apiKey ?? "");
@@ -46,8 +49,8 @@ export default function Settings() {
           <View style={styles.chips}>
             {MODELS.map((m) => (
               <Press key={m.id} onPress={() => setModel(m.id)} style={[styles.pill, model === m.id && styles.pillOn]} accessibilityRole="button" accessibilityState={{ selected: model === m.id }}>
-                <Text style={[styles.pillText, model === m.id && { color: "#04201c" }]}>{m.label}</Text>
-                <Text style={[styles.pillNote, model === m.id && { color: "#04201c" }]}>{m.note}</Text>
+                <Text style={[styles.pillText, model === m.id && { color: colors.onAccent }]}>{m.label}</Text>
+                <Text style={[styles.pillNote, model === m.id && { color: colors.onAccent }]}>{m.note}</Text>
               </Press>
             ))}
           </View>
@@ -82,7 +85,7 @@ export default function Settings() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeThemed((colors, type, cat) => StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   back: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" },
   card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: space.lg, borderWidth: 1, borderColor: colors.line, marginTop: space.lg },
@@ -94,5 +97,5 @@ const styles = StyleSheet.create({
   pillNote: { color: colors.textDim, fontSize: 11.5 },
   switchRow: { flexDirection: "row", alignItems: "center", gap: space.md, marginTop: space.lg },
   save: { height: 52, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
-  saveText: { color: "#04201c", fontWeight: "800", fontSize: 16 },
-});
+  saveText: { color: colors.onAccent, fontWeight: "800", fontSize: 16 },
+}));

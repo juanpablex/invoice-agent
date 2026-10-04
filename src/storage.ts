@@ -55,3 +55,23 @@ export async function clearKey(): Promise<void> {
     /* nothing to clear */
   }
 }
+
+const THEME = "invoice-agent.theme";
+
+export async function loadTheme(): Promise<"light" | "dark" | null> {
+  try {
+    const v = Platform.OS === "web" ? localStorage.getItem(THEME) : await SecureStore.getItemAsync(THEME);
+    return v === "light" || v === "dark" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveTheme(mode: "light" | "dark"): Promise<void> {
+  try {
+    if (Platform.OS === "web") localStorage.setItem(THEME, mode);
+    else await SecureStore.setItemAsync(THEME, mode);
+  } catch {
+    /* the choice lasts for this session only */
+  }
+}

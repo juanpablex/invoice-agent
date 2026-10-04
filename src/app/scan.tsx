@@ -16,7 +16,8 @@ import { goBack } from "../nav";
 import { useApp } from "../state";
 import { Backdrop } from "../ui/Backdrop";
 import { Press } from "../ui/Press";
-import { colors, radius, space, type } from "../theme";
+import { radius, space } from "../theme";
+import { makeThemed, useTheme } from "../themeContext";
 
 const IMAGES: Record<string, Img> = {
   paper: require("../../assets/samples/paper.png"),
@@ -27,6 +28,8 @@ const IMAGES: Record<string, Img> = {
 const FRAME_H = 330;
 
 function Scanner({ source, steps }: { source: Img | null; steps: TraceStep[] }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
   const y = useSharedValue(0);
   useEffect(() => {
     y.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.quad) }), -1, true);
@@ -60,6 +63,8 @@ function Scanner({ source, steps }: { source: Img | null; steps: TraceStep[] }) 
 }
 
 export default function Scan() {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { useReal, apiKey, model, ledger, setJob } = useApp();
   const real = useReal && !!apiKey;
@@ -167,8 +172,8 @@ export default function Scan() {
   );
 }
 
-const corner = { position: "absolute" as const, width: 26, height: 26, borderColor: colors.accent };
-const styles = StyleSheet.create({
+const useStyles = makeThemed((colors, type, cat) => StyleSheet.create({
+  corner: { position: "absolute", width: 26, height: 26, borderColor: colors.accent },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   back: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" },
   backText: { color: colors.text, fontSize: 18 },
@@ -182,11 +187,10 @@ const styles = StyleSheet.create({
   pdfPage: { ...StyleSheet.absoluteFill, backgroundColor: "#f3f4f6", alignItems: "center", justifyContent: "center" },
   pdfText: { fontSize: 64, fontWeight: "800", color: "#9ca3af", letterSpacing: 4 },
   scanLine: { position: "absolute", left: 0, right: 0, top: 0 },
-  corner,
   c1: { top: 12, left: 12, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 10 },
   c2: { top: 12, right: 12, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 10 },
   c3: { bottom: 12, left: 12, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 10 },
   c4: { bottom: 12, right: 12, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 10 },
   step: { flexDirection: "row", alignItems: "center", gap: space.md, backgroundColor: colors.card, borderRadius: radius.sm, padding: space.md, marginTop: space.sm, borderWidth: 1, borderColor: colors.line },
   stepTool: { color: colors.text, fontWeight: "600", fontFamily: "monospace" },
-});
+}));
