@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MODELS } from "../core/agent";
+import { goBack } from "../nav";
 import { useApp } from "../state";
 import { Backdrop } from "../ui/Backdrop";
 import { Press } from "../ui/Press";
@@ -24,7 +25,7 @@ export default function Settings() {
     <Backdrop>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + space.xxl, paddingHorizontal: space.xl }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={styles.head}>
-          <Press onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel="Go back"><Text style={{ color: colors.text, fontSize: 18 }}>←</Text></Press>
+          <Press onPress={() => goBack()} style={styles.back} accessibilityRole="button" accessibilityLabel="Go back"><Text style={{ color: colors.text, fontSize: 18 }}>←</Text></Press>
           <Text style={type.label}>Settings</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -62,7 +63,7 @@ export default function Settings() {
             Use a key with a low spending limit, and only on a device you trust. The model can only read the sample data and propose expenses; booking needs your swipe.
           </Text>
 
-          <Press disabled={!valid} onPress={async () => { await app.saveKey(key.trim(), model, remember); router.back(); }} style={{ marginTop: space.lg, opacity: valid ? 1 : 0.45 }} accessibilityRole="button">
+          <Press disabled={!valid} onPress={async () => { await app.saveKey(key.trim(), model, remember); goBack(); }} style={{ marginTop: space.lg, opacity: valid ? 1 : 0.45 }} accessibilityRole="button">
             <LinearGradient colors={[colors.accent, colors.accent2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.save}><Text style={styles.saveText}>Save and use</Text></LinearGradient>
           </Press>
         </Animated.View>

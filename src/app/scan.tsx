@@ -12,6 +12,7 @@ import { explainError, runClaude, runScripted, type ImageInput } from "../core/a
 import { SAMPLE_INVOICES } from "../core/samples";
 import type { TraceStep } from "../core/types";
 import { imageToBase64, pdfToBase64, shrinkForApi, toSource, type Img } from "../image";
+import { goBack } from "../nav";
 import { useApp } from "../state";
 import { Backdrop } from "../ui/Backdrop";
 import { Press } from "../ui/Press";
@@ -125,7 +126,7 @@ export default function Scan() {
     <Backdrop>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + space.xxl, paddingHorizontal: space.xl }} showsVerticalScrollIndicator={false}>
         <View style={styles.head}>
-          <Press onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel="Go back"><Text style={styles.backText}>←</Text></Press>
+          <Press onPress={() => goBack()} style={styles.back} accessibilityRole="button" accessibilityLabel="Go back"><Text style={styles.backText}>←</Text></Press>
           <Text style={type.label}>New invoice</Text>
           <View style={{ width: 40 }} />
         </View>
