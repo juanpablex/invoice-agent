@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform } from "react-native";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,7 +10,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { explainError, runClaude, runScripted, type ImageInput } from "../core/agent";
 import { SAMPLE_INVOICES } from "../core/samples";
 import type { TraceStep } from "../core/types";
-import { imageToBase64, toSource, type Img } from "../image";
+import { imageToBase64, shrinkForApi, toSource, type Img } from "../image";
 import { useApp } from "../state";
 import { Backdrop } from "../ui/Backdrop";
 import { Press } from "../ui/Press";
@@ -86,14 +87,18 @@ export default function Scan() {
   async function pick(camera: boolean) {
     if (!real) return setError("Reading your own photo needs a real model. Add your API key in Settings, or try one of the samples.");
     try {
-      const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 0.5, base64: true };
+      const web = Platform.OS === "web";
+      const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 0.5, base64: !web, exif: false };
       const res = camera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
       const a = res.canceled ? null : res.assets[0];
-      if (!a?.base64) return;
+      if (!a) return;
+      if (web) return await process(a.uri, () => shrinkForApi(a.uri));
+      if (!a.base64) return;
       const mediaType = (a.mimeType && /image\/(png|jpeg|webp|gif)/.test(a.mimeType) ? a.mimeType : "image/jpeg") as ImageInput["mediaType"];
       await process(a.uri, async () => ({ base64: a.base64!, mediaType }));
-    } catch {
-      setError("Could not open the camera or the library. Check the permissions for this app.");
+    } catch (err) {
+      console.warn("image picker failed", err);
+      setError(`Could not open the camera or the library (${err instanceof Error ? err.message : String(err)}). Check the permissions for this app.`);
     }
   }
 

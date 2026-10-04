@@ -25,3 +25,17 @@ export async function imageToBase64(source: Img): Promise<ImageInput> {
   const mediaType = /image\/(png|jpeg|webp|gif)/.exec(head ?? "")?.[0] ?? "image/png";
   return { base64: data ?? "", mediaType: mediaType as ImageInput["mediaType"] };
 }
+
+const MAX_SIDE = 1568; // larger images are downscaled by the API anyway, and the API rejects files over 5 MB
+
+/** Web only: shrinks a picked image to a JPEG the API accepts. Phones already compress through the picker's quality option. */
+export async function shrinkForApi(uri: string): Promise<ImageInput> {
+  const bitmap = await createImageBitmap(await (await fetch(uri)).blob());
+  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const data = canvas.toDataURL("image/jpeg", 0.85).split(",")[1] ?? "";
+  return { base64: data, mediaType: "image/jpeg" };
+}
