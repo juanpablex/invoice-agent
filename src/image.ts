@@ -8,6 +8,11 @@ export type Img = number | string | { uri: string };
 export const toSource = (x: Img) => (typeof x === "string" ? { uri: x } : x);
 
 export async function imageToBase64(source: Img): Promise<ImageInput> {
+  if (typeof source === "string" && source.startsWith("data:")) {
+    const [head, data] = source.split(",");
+    const mt = /image\/(png|jpeg|webp|gif)/.exec(head ?? "")?.[0] ?? "image/png";
+    return { base64: data ?? "", mediaType: mt as ImageInput["mediaType"] };
+  }
   let uri: string;
   if (typeof source !== "string") {
     const asset = Asset.fromModule(source as number);

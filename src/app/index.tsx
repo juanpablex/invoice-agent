@@ -59,7 +59,7 @@ function ScanButton() {
 export default function Home() {
   const { colors, type, cat } = useTheme();
   const styles = useStyles();
-  const { expenses, useReal, model, apiKey } = useApp();
+  const { expenses, useReal, model, apiKey, useAccount } = useApp();
   const { mode, toggle } = useTheme();
   const insets = useSafeAreaInsets();
   const total = expenses.reduce((a, e) => a + e.total, 0);
@@ -76,8 +76,8 @@ export default function Home() {
               <Text style={styles.themeIcon}>{mode === "dark" ? "☀" : "☾"}</Text>
             </Press>
             <Press onPress={() => router.push("/settings")} style={styles.mode} accessibilityRole="button" accessibilityLabel="Open settings">
-              <View style={[styles.dot, { backgroundColor: useReal && apiKey ? colors.ok : colors.warn }]} />
-              <Text style={styles.modeText}>{useReal && apiKey ? `Real model · ${modelLabel}` : "Scripted demo"}</Text>
+              <View style={[styles.dot, { backgroundColor: useAccount || (useReal && apiKey) ? colors.ok : colors.warn }]} />
+              <Text style={styles.modeText}>{useAccount ? "Real model · your Claude account" : useReal && apiKey ? `Real model · ${modelLabel}` : "Scripted demo"}</Text>
             </Press>
           </View>
         </View>

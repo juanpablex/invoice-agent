@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { bookProposal, createLedger, rejectProposal } from "./core/ledger";
 import type { AgentResult } from "./core/agent";
+import { getSample, type Tier } from "./core/accountAgent";
 import { DEFAULT_MODEL } from "./core/agent";
 import type { Expense } from "./core/types";
 import type { Img } from "./image";
@@ -21,6 +22,12 @@ interface AppState {
   remembered: boolean;
   useReal: boolean;
   setUseReal: (v: boolean) => void;
+  /** True when this page can use the viewer's Claude account (inside a Claude Artifact). null while checking. */
+  accountAvailable: boolean | null;
+  useAccount: boolean;
+  setUseAccount: (v: boolean) => void;
+  tier: Tier;
+  setTier: (t: Tier) => void;
   saveKey: (key: string, model: string, remember: boolean) => Promise<void>;
   removeKey: () => Promise<void>;
   approve: (proposalId: string) => Expense;
@@ -38,8 +45,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [remembered, setRemembered] = useState(false);
   const [useReal, setUseReal] = useState(false);
+  const [accountAvailable, setAccountAvailable] = useState<boolean | null>(null);
+  const [useAccount, setUseAccount] = useState(false);
+  const [tier, setTier] = useState<Tier>("quick");
 
   useEffect(() => {
+    getSample().then((sample) => setAccountAvailable(!!sample));
     loadSettings().then((s) => {
       if (s.model) setModel(s.model);
       setRemembered(s.remembered);
@@ -74,8 +85,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const reject = useCallback((id: string) => rejectProposal(ledger, id), [ledger]);
 
   const value = useMemo<AppState>(
-    () => ({ expenses, job, setJob, apiKey, model, remembered, useReal, setUseReal, saveKey, removeKey, approve, reject, ledger }),
-    [expenses, job, apiKey, model, remembered, useReal, saveKey, removeKey, approve, reject, ledger],
+    () => ({ expenses, job, setJob, apiKey, model, remembered, useReal, setUseReal, accountAvailable, useAccount, setUseAccount, tier, setTier, saveKey, removeKey, approve, reject, ledger }),
+    [expenses, job, apiKey, model, remembered, useReal, accountAvailable, useAccount, tier, saveKey, removeKey, approve, reject, ledger],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

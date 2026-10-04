@@ -1,4 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { runAccount, explainSampleError as explainAccountError, type SampleFn } from "../src/core/accountAgent";
 import { runClaude, runScripted, toolParams, explainError, type LlmClient } from "../src/core/agent";
 import { bookProposal, createLedger } from "../src/core/ledger";
 import { SAMPLE_INVOICES } from "../src/core/samples";
@@ -60,6 +61,35 @@ assert(!toolParams.some((t) => /book|approve|decide/.test(t.name)), "no tool can
   await runClaude(img, createLedger(), () => {}, llm, "m");
   const kind = (i: number) => ((seen[i]!.messages[0]!.content as { type: string }[])[0]!.type);
   assert(kind(0) === "document" && kind(1) === "image", "a PDF is sent as a document block and an image as an image block");
+}
+// Claude-account mode (Artifact `sample` capability), with a fake sample function
+{
+  const l = createLedger();
+  let offered: string[] = [];
+  let image: Blob | undefined;
+  const fakeSample = Object.assign(
+    async (_input: string, opts?: { tools?: { name: string; execute: (i: Record<string, unknown>) => unknown }[]; images?: Blob | Blob[] }) => {
+      offered = (opts?.tools ?? []).map((t) => t.name);
+      image = opts?.images as Blob;
+      const run = (n: string, a: Record<string, unknown>) => opts!.tools!.find((t) => t.name === n)!.execute(a);
+      run("lookup_vendor", { name: "Brightline Energy" });
+      run("propose_expense", { ...sample, category: "Utilities" });
+      return { text: "Prepared.", truncated: false };
+    },
+    { limits: async () => ({ tools: { maxCount: 10 }, images: { maxCount: 1, mediaTypes: ["image/png"] } }) },
+  ) as unknown as SampleFn;
+  const steps: string[] = [];
+  const r = await runAccount(img, l, (s) => steps.push(s.tool), fakeSample, "quick");
+  assert(r.proposal?.status === "pending" && l.expenses.length === 5, "account mode: the model can only propose");
+  assert(offered.join() === "lookup_vendor,check_duplicate,propose_expense" && image instanceof Blob && image.type === "image/png", "account mode: the three tools and the image are sent");
+  assert(steps.join() === "lookup_vendor,propose_expense", "account mode: steps are traced");
+  let code = "";
+  try { await runAccount({ base64: "AA", mediaType: "application/pdf" }, l, () => {}, fakeSample, "quick"); } catch (e) { code = (e as { code: string }).code; }
+  assert(code === "images_unavailable" && /images/.test(explainAccountError({ code })), "account mode: PDFs are refused with a clear message");
+  const noImages = Object.assign(fakeSample, { limits: async () => ({ tools: { maxCount: 10 } }) }) as SampleFn;
+  code = "";
+  try { await runAccount(img, l, () => {}, noImages, "quick"); } catch (e) { code = (e as { code: string }).code; }
+  assert(code === "images_unavailable", "account mode: a viewer that cannot send images gets a clear message");
 }
 assert(/rejected/.test(explainError({ status: 401 })), "errors are explained");
 console.log("OK: invoice agent (fake model)");

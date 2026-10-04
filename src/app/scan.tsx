@@ -9,6 +9,8 @@ import Animated, { Easing, FadeIn, FadeInDown, FadeInRight, useAnimatedStyle, us
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Anthropic from "@anthropic-ai/sdk";
 import { explainError, runClaude, runScripted, type ImageInput } from "../core/agent";
+import { explainSampleError, getSample, runAccount } from "../core/accountAgent";
+import { SAMPLE_IMAGES } from "../core/sampleImages";
 import { SAMPLE_INVOICES } from "../core/samples";
 import type { TraceStep } from "../core/types";
 import { imageToBase64, pdfToBase64, shrinkForApi, toSource, type Img } from "../image";
@@ -19,11 +21,7 @@ import { Press } from "../ui/Press";
 import { radius, space } from "../theme";
 import { makeThemed, useTheme } from "../themeContext";
 
-const IMAGES: Record<string, Img> = {
-  paper: require("../../assets/samples/paper.png"),
-  cloud: require("../../assets/samples/cloud.png"),
-  catering: require("../../assets/samples/catering.png"),
-};
+const IMAGES: Record<string, Img> = SAMPLE_IMAGES;
 
 const FRAME_H = 330;
 
@@ -66,8 +64,9 @@ export default function Scan() {
   const { colors, type } = useTheme();
   const styles = useStyles();
   const insets = useSafeAreaInsets();
-  const { useReal, apiKey, model, ledger, setJob } = useApp();
-  const real = useReal && !!apiKey;
+  const { useReal, apiKey, model, ledger, setJob, useAccount, tier } = useApp();
+  const key = useReal && !!apiKey;
+  const real = useAccount || key;
   const [busy, setBusy] = useState<{ src: Img | null } | null>(null);
   const [steps, setSteps] = useState<TraceStep[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +78,11 @@ export default function Scan() {
     try {
       const onStep = (s: TraceStep) => setSteps((p) => [...p, s]);
       let result;
-      if (real) {
+      if (useAccount) {
+        const sample = await getSample();
+        if (!sample) throw Object.assign(new Error("no sample"), { code: "capability_disabled" });
+        result = await runAccount(await image(), ledger, onStep, sample, tier);
+      } else if (key) {
         const llm = new Anthropic({ apiKey: apiKey!, dangerouslyAllowBrowser: true });
         result = await runClaude(await image(), ledger, onStep, llm, model);
       } else {
@@ -91,13 +94,14 @@ export default function Scan() {
       router.replace("/review");
     } catch (err) {
       const m = err instanceof Error ? err.message : "";
-      setError(m === "NEEDS_REAL" ? "Reading your own photo needs a real model. Add your API key in Settings, or try one of the samples." : m === "PDF_TOO_LARGE" ? "That PDF is larger than 5 MB. Try a smaller one, or export just the invoice page." : explainError(err));
+      setError(m === "NEEDS_REAL" ? "Reading your own photo needs a real model. Turn on a real model in Settings, or try one of the samples." : m === "PDF_TOO_LARGE" ? "That PDF is larger than 5 MB. Try a smaller one, or export just the invoice page." : useAccount ? explainSampleError(err) : explainError(err));
       setBusy(null);
     }
   }
 
   async function pickPdf() {
-    if (!real) return setError("Reading your own invoice needs a real model. Add your API key in Settings, or try one of the samples.");
+    if (useAccount) return setError("Your Claude account reads images, not PDFs. Choose an image of the invoice instead.");
+    if (!real) setError("Reading your own invoice needs a real model. Turn on a real model in Settings, or try one of the samples.");
     try {
       const res = await DocumentPicker.getDocumentAsync({ type: "application/pdf", copyToCacheDirectory: true });
       const a = res.canceled ? null : res.assets[0];
@@ -110,7 +114,7 @@ export default function Scan() {
   }
 
   async function pick(camera: boolean) {
-    if (!real) return setError("Reading your own photo needs a real model. Add your API key in Settings, or try one of the samples.");
+    if (!real) return setError("Reading your own photo needs a real model. Turn on a real model in Settings, or try one of the samples.");
     try {
       const web = Platform.OS === "web";
       const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 0.5, base64: !web, exif: false };
@@ -142,7 +146,7 @@ export default function Scan() {
           <Animated.View entering={FadeInDown.springify()}>
             <Text style={[type.title, { marginTop: space.lg }]}>What do you want to scan?</Text>
             <Text style={[type.small, { marginTop: space.sm, fontSize: 14 }]}>
-              {real ? "A Claude model will read the image and use the tools." : "Scripted demo: the extraction is canned for these samples. Add an API key in Settings for a real model."}
+              {real ? "A Claude model will read the image and use the tools." : "Scripted demo: the extraction is canned for these samples. Turn on a real model in Settings."}
             </Text>
 
             <Text style={[type.label, { marginTop: space.xl, marginBottom: space.md }]}>Samples</Text>

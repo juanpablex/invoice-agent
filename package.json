@@ -38,7 +38,8 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "tsx scripts/agent-check.mts",
-    "build:web": "expo export --platform web && node scripts/postbuild-web.mjs"
+    "build:web": "expo export --platform web && node scripts/postbuild-web.mjs",
+    "build:artifact": "node scripts/build-artifact.mjs"
   },
   "private": true
 }

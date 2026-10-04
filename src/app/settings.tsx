@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MODELS } from "../core/agent";
+import { TIERS } from "../core/accountAgent";
 import { goBack } from "../nav";
 import { useApp } from "../state";
 import { Backdrop } from "../ui/Backdrop";
@@ -36,11 +37,36 @@ export default function Settings() {
         <Animated.View entering={FadeInDown.springify()}>
           <Text style={[type.title, { marginTop: space.lg }]}>Use a real model</Text>
           <Text style={[type.small, { fontSize: 14, marginTop: space.sm, lineHeight: 20 }]}>
-            Optional. With your own Anthropic API key, a Claude model reads the invoice image and decides which tools to call, instead of the script.
-            Requests go {isWeb ? "straight from this browser" : "straight from this phone"} to the Anthropic API and are billed to your account. There is no server in between.
+            {app.accountAvailable
+              ? "Optional. A Claude model reads the invoice image and decides which tools to call, instead of the script. It answers through your own Claude account."
+              : `Optional. With your own Anthropic API key, a Claude model reads the invoice image and decides which tools to call, instead of the script. Requests go ${isWeb ? "straight from this browser" : "straight from this phone"} to the Anthropic API and are billed to your account. There is no server in between.`}
           </Text>
         </Animated.View>
 
+        {app.accountAvailable && (
+          <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.card}>
+            <Text style={type.label}>Your Claude account</Text>
+            <Text style={[type.small, { marginTop: space.sm, lineHeight: 18 }]}>
+              No API key needed. Claude reads the invoice through your own Claude account and the usage counts against your plan. You will be asked to allow it the first time, and answers can take up to a minute. It reads images, not PDFs. It can only propose expenses; booking needs your swipe.
+            </Text>
+            <Text style={[type.label, { marginTop: space.lg }]}>Speed</Text>
+            <View style={styles.chips}>
+              {TIERS.map((t) => (
+                <Press key={t.id} onPress={() => app.setTier(t.id)} style={[styles.pill, app.tier === t.id && styles.pillOn]} accessibilityRole="button" accessibilityState={{ selected: app.tier === t.id }}>
+                  <Text style={[styles.pillText, app.tier === t.id && { color: colors.onAccent }]}>{t.label}</Text>
+                </Press>
+              ))}
+            </View>
+            <Press onPress={() => { app.setUseAccount(true); goBack(); }} style={{ marginTop: space.lg }} accessibilityRole="button">
+              <LinearGradient colors={[colors.accent, colors.accent2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.save}><Text style={styles.saveText}>{app.useAccount ? "Keep using my account" : "Use my Claude account"}</Text></LinearGradient>
+            </Press>
+            {app.useAccount && (
+              <Press onPress={() => { app.setUseAccount(false); goBack(); }} style={{ marginTop: space.lg, alignSelf: "flex-start" }} accessibilityRole="button"><Text style={{ color: colors.danger, fontWeight: "700" }}>Back to the script</Text></Press>
+            )}
+          </Animated.View>
+        )}
+
+        {app.accountAvailable === false && (
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.card}>
           <Text style={type.label}>Anthropic API key</Text>
           <TextInput value={key} onChangeText={setKey} secureTextEntry autoCapitalize="none" autoCorrect={false} spellCheck={false} placeholder="sk-ant-..." placeholderTextColor={colors.textDim} style={styles.input} accessibilityLabel="Anthropic API key" />
@@ -70,8 +96,9 @@ export default function Settings() {
             <LinearGradient colors={[colors.accent, colors.accent2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.save}><Text style={styles.saveText}>Save and use</Text></LinearGradient>
           </Press>
         </Animated.View>
+        )}
 
-        {app.apiKey && (
+        {app.accountAvailable === false && app.apiKey && (
           <Animated.View entering={FadeInDown.delay(180).springify()} style={styles.card}>
             <View style={styles.switchRow}>
               <Text style={[type.body, { flex: 1 }]}>Use the real model</Text>
