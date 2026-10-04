@@ -1,5 +1,9 @@
 # Invoice Agent
 
+[![Deploy](https://github.com/juanpablex/invoice-agent/actions/workflows/pages.yml/badge.svg)](https://github.com/juanpablex/invoice-agent/actions/workflows/pages.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Live demo](https://img.shields.io/badge/demo-live-5eead4)](https://juanpablex.github.io/invoice-agent/)
+
+![Preview of the app](docs/preview.jpg)
+
 A mobile app (Expo / React Native, also runs on the web) where an AI agent reads an invoice and **proposes** an expense, and you **approve it with a swipe**. The agent can never book anything by itself.
 
 **Try it:** https://juanpablex.github.io/invoice-agent/ (best on a phone; or run it with Expo Go, below).
