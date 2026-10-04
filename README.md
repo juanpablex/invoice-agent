@@ -13,7 +13,7 @@ All data is fictional: the vendors, invoices and expenses are made up for this p
 | Tools (`lookup_vendor`, `check_duplicate`, `propose_expense`) | **Real code**, shared by both modes. |
 | Approval rule | **Real.** No tool books or approves anything. Booking happens in the app, after your swipe. Tested. |
 | Default mode ("Scripted demo") | **Scripted.** The three bundled sample invoices have canned extraction; no model reads the image. It exists so the app works for anyone, free. |
-| Real-model mode (optional) | **Real, bring your own key.** A Claude model reads the invoice image (yours, from the camera or the library) and drives the same tools. Token counts shown come from the API. |
+| Real-model mode (optional) | **Real, bring your own key.** A Claude model reads the invoice (yours: a photo, an image or a PDF up to 5 MB) and drives the same tools. Token counts shown come from the API. |
 
 ## Your API key
 

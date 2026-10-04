@@ -7,7 +7,8 @@ import type { Img } from "./image";
 import { clearKey, loadSettings, saveSettings } from "./storage";
 
 export interface Job {
-  imageUri: Img;
+  /** null when the input was a PDF (no picture to show). */
+  imageUri: Img | null;
   result?: AgentResult;
 }
 

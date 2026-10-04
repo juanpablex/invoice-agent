@@ -39,3 +39,18 @@ export async function shrinkForApi(uri: string): Promise<ImageInput> {
   const data = canvas.toDataURL("image/jpeg", 0.85).split(",")[1] ?? "";
   return { base64: data, mediaType: "image/jpeg" };
 }
+
+export const MAX_PDF_BYTES = 5 * 1024 * 1024;
+
+/** Reads a picked PDF as base64. Refuses very large files before sending them. */
+export async function pdfToBase64(uri: string): Promise<ImageInput> {
+  const blob = await (await fetch(uri)).blob();
+  if (blob.size > MAX_PDF_BYTES) throw new Error("PDF_TOO_LARGE");
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+  return { base64: dataUrl.split(",")[1] ?? "", mediaType: "application/pdf" };
+}

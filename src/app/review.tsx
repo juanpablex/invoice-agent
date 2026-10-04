@@ -48,7 +48,11 @@ export default function Review() {
           <>
             <Animated.View entering={FadeInDown.springify()} style={[styles.card, { marginTop: space.xl }]}>
               <View style={{ flexDirection: "row", gap: space.md }}>
-                <Image source={toSource(imageUri)} style={styles.thumb} resizeMode="cover" />
+                {imageUri === null ? (
+                  <View style={[styles.thumb, { alignItems: "center", justifyContent: "center", backgroundColor: "#f3f4f6" }]}><Text style={{ color: "#6b7280", fontWeight: "800" }}>PDF</Text></View>
+                ) : (
+                  <Image source={toSource(imageUri)} style={styles.thumb} resizeMode="cover" />
+                )}
                 <View style={{ flex: 1 }}>
                   <Text style={styles.vendor} numberOfLines={2}>{p.invoice.vendor}</Text>
                   <Text style={type.small}>{p.invoice.invoiceNo} · {p.invoice.date}</Text>

@@ -53,5 +53,13 @@ assert(!toolParams.some((t) => /book|approve|decide/.test(t.name)), "no tool can
   const bad = await runClaude(img, createLedger(), () => {}, fake([msg("tool_use", [{ type: "tool_use", id: "x", name: "propose_expense", input: { ...sample, category: "Meals", total: -5 } }]), msg("end_turn", [{ type: "text", text: "Could not." }])]), "m");
   assert(!bad.proposal && bad.steps[0]?.ok === false, "an invalid total is rejected by the tool");
 }
+{
+  const seen: Anthropic.MessageCreateParamsNonStreaming[] = [];
+  const llm: LlmClient = { messages: { create: async (p) => { seen.push(p); return msg("end_turn", [{ type: "text", text: "ok" }]); } } };
+  await runClaude({ base64: "JVBERi0=", mediaType: "application/pdf" }, createLedger(), () => {}, llm, "m");
+  await runClaude(img, createLedger(), () => {}, llm, "m");
+  const kind = (i: number) => ((seen[i]!.messages[0]!.content as { type: string }[])[0]!.type);
+  assert(kind(0) === "document" && kind(1) === "image", "a PDF is sent as a document block and an image as an image block");
+}
 assert(/rejected/.test(explainError({ status: 401 })), "errors are explained");
 console.log("OK: invoice agent (fake model)");

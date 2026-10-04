@@ -53,8 +53,8 @@ export async function runScripted(invoice: InvoiceData, ledger: LedgerState, onS
 }
 
 const SYSTEM =
-  "You are an accounts-payable agent. You receive a photo of an invoice. Read it, then use the tools: look up the vendor, check for a duplicate, and finally call propose_expense once with the data you read and the best category. " +
-  "propose_expense only creates a proposal that a person approves in the app, so never say the expense was booked. If the image is not an invoice or is unreadable, do not call propose_expense: explain briefly instead. Dates must be YYYY-MM-DD.";
+  "You are an accounts-payable agent. You receive an invoice as a photo or a PDF. Read it, then use the tools: look up the vendor, check for a duplicate, and finally call propose_expense once with the data you read and the best category. " +
+  "propose_expense only creates a proposal that a person approves in the app, so never say the expense was booked. If the file is not an invoice or is unreadable, do not call propose_expense: explain briefly instead. Dates must be YYYY-MM-DD.";
 
 /** The subset of the SDK the loop needs, so tests can pass a fake. */
 export interface LlmClient {
@@ -63,9 +63,10 @@ export interface LlmClient {
 
 export const toolParams: Anthropic.Tool[] = TOOLS.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema as Anthropic.Tool.InputSchema }));
 
+/** An invoice file for the model: an image or a PDF. */
 export interface ImageInput {
   base64: string;
-  mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+  mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif" | "application/pdf";
 }
 
 const MAX_ITERATIONS = 6;
@@ -75,12 +76,13 @@ export function explainError(err: unknown): string {
   if (status === 401) return "The API key was rejected. Check that you pasted the whole key.";
   if (status === 403) return "This key is not allowed to use that model.";
   if (status === 404) return "That model was not found for this key. Pick another one in Settings.";
-  if (status === 413) return "The photo is too large. Try a smaller one.";
+  if (status === 413) return "The file is too large. Try a smaller one.";
   if (status === 429) return "Rate limit reached. Wait a moment and try again.";
   if (status === 400 && /credit|balance/i.test(String((err as Error).message))) return "The account behind this key has no API credit left.";
   if (status === 529 || (status !== undefined && status >= 500)) return "The API is overloaded or unavailable. Try again shortly.";
   if (status === undefined) return "Could not reach the API. Check your connection.";
-  return `The API returned an error (${status}).`;
+  const detail = status === 400 ? `: ${String((err as Error).message).slice(0, 160)}` : "";
+  return `The API returned an error (${status})${detail}.`;
 }
 
 /** Real-model mode: a Claude model reads the image and drives the same tools. */
@@ -91,7 +93,9 @@ export async function runClaude(image: ImageInput, ledger: LedgerState, onStep: 
     {
       role: "user",
       content: [
-        { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } },
+        image.mediaType === "application/pdf"
+          ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: image.base64 } }
+          : { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } },
         { type: "text", text: "Process this invoice." },
       ],
     },

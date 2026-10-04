@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Platform } from "react-native";
 import { router } from "expo-router";
+import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { Easing, FadeIn, FadeInDown, FadeInRight, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
@@ -10,7 +11,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { explainError, runClaude, runScripted, type ImageInput } from "../core/agent";
 import { SAMPLE_INVOICES } from "../core/samples";
 import type { TraceStep } from "../core/types";
-import { imageToBase64, shrinkForApi, toSource, type Img } from "../image";
+import { imageToBase64, pdfToBase64, shrinkForApi, toSource, type Img } from "../image";
 import { useApp } from "../state";
 import { Backdrop } from "../ui/Backdrop";
 import { Press } from "../ui/Press";
@@ -24,7 +25,7 @@ const IMAGES: Record<string, Img> = {
 
 const FRAME_H = 330;
 
-function Scanner({ source, steps }: { source: Img; steps: TraceStep[] }) {
+function Scanner({ source, steps }: { source: Img | null; steps: TraceStep[] }) {
   const y = useSharedValue(0);
   useEffect(() => {
     y.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.quad) }), -1, true);
@@ -33,7 +34,11 @@ function Scanner({ source, steps }: { source: Img; steps: TraceStep[] }) {
   return (
     <Animated.View entering={FadeIn.duration(250)}>
       <View style={styles.frame}>
-        <Image source={toSource(source)} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        {source === null ? (
+          <View style={styles.pdfPage}><Text style={styles.pdfText}>PDF</Text></View>
+        ) : (
+          <Image source={toSource(source)} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        )}
         <View style={styles.dim} />
         <Animated.View style={[styles.scanLine, line]}>
           <LinearGradient colors={["rgba(94,234,212,0)", colors.accent, "rgba(94,234,212,0)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 3 }} />
@@ -57,14 +62,14 @@ export default function Scan() {
   const insets = useSafeAreaInsets();
   const { useReal, apiKey, model, ledger, setJob } = useApp();
   const real = useReal && !!apiKey;
-  const [busy, setBusy] = useState<Img | null>(null);
+  const [busy, setBusy] = useState<{ src: Img | null } | null>(null);
   const [steps, setSteps] = useState<TraceStep[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  async function process(imageUri: Img, image: () => Promise<ImageInput>, sampleId?: string) {
+  async function process(imageUri: Img | null, image: () => Promise<ImageInput>, sampleId?: string) {
     setError(null);
     setSteps([]);
-    setBusy(imageUri);
+    setBusy({ src: imageUri });
     try {
       const onStep = (s: TraceStep) => setSteps((p) => [...p, s]);
       let result;
@@ -79,8 +84,22 @@ export default function Scan() {
       setJob({ imageUri, result });
       router.replace("/review");
     } catch (err) {
-      setError(err instanceof Error && err.message === "NEEDS_REAL" ? "Reading your own photo needs a real model. Add your API key in Settings, or try one of the samples." : explainError(err));
+      const m = err instanceof Error ? err.message : "";
+      setError(m === "NEEDS_REAL" ? "Reading your own photo needs a real model. Add your API key in Settings, or try one of the samples." : m === "PDF_TOO_LARGE" ? "That PDF is larger than 5 MB. Try a smaller one, or export just the invoice page." : explainError(err));
       setBusy(null);
+    }
+  }
+
+  async function pickPdf() {
+    if (!real) return setError("Reading your own invoice needs a real model. Add your API key in Settings, or try one of the samples.");
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: "application/pdf", copyToCacheDirectory: true });
+      const a = res.canceled ? null : res.assets[0];
+      if (!a) return;
+      await process(null, () => pdfToBase64(a.uri));
+    } catch (err) {
+      console.warn("document picker failed", err);
+      setError(`Could not open the PDF (${err instanceof Error ? err.message : String(err)}).`);
     }
   }
 
@@ -112,7 +131,7 @@ export default function Scan() {
         </View>
 
         {busy !== null ? (
-          <Scanner source={busy} steps={steps} />
+          <Scanner source={busy.src} steps={steps} />
         ) : (
           <Animated.View entering={FadeInDown.springify()}>
             <Text style={[type.title, { marginTop: space.lg }]}>What do you want to scan?</Text>
@@ -138,6 +157,7 @@ export default function Scan() {
               <Press onPress={() => pick(true)} style={[styles.action, !real && { opacity: 0.55 }]} accessibilityRole="button"><Text style={styles.actionText}>📷  Take photo</Text></Press>
               <Press onPress={() => pick(false)} style={[styles.action, !real && { opacity: 0.55 }]} accessibilityRole="button"><Text style={styles.actionText}>🖼  Choose image</Text></Press>
             </View>
+            <Press onPress={pickPdf} style={[styles.action, { marginTop: space.md }, !real && { opacity: 0.55 }]} accessibilityRole="button"><Text style={styles.actionText}>📄  Choose PDF</Text></Press>
             {error && <Animated.View entering={FadeIn} style={styles.error}><Text style={{ color: colors.danger, fontSize: 14 }}>{error}</Text></Animated.View>}
           </Animated.View>
         )}
@@ -158,6 +178,8 @@ const styles = StyleSheet.create({
   error: { marginTop: space.lg, backgroundColor: "rgba(251,113,133,0.12)", borderColor: "rgba(251,113,133,0.4)", borderWidth: 1, borderRadius: radius.md, padding: space.md },
   frame: { height: FRAME_H, borderRadius: radius.lg, overflow: "hidden", marginTop: space.xl, backgroundColor: "#fff" },
   dim: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(11,13,26,0.35)" },
+  pdfPage: { ...StyleSheet.absoluteFill, backgroundColor: "#f3f4f6", alignItems: "center", justifyContent: "center" },
+  pdfText: { fontSize: 64, fontWeight: "800", color: "#9ca3af", letterSpacing: 4 },
   scanLine: { position: "absolute", left: 0, right: 0, top: 0 },
   corner,
   c1: { top: 12, left: 12, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 10 },
